@@ -29,7 +29,7 @@ def menu():
     print("5. Buscar por rango de fechas de visita")
     print("6. Buscar por nombre de dueño")
     print("7. Actualizar edad de una mascota")
-    print("8. Registrar nueva atención (Agregar al historial)")
+    print("8. Actualizar Diagnóstico de Atención (Agregar al historial)")
     print("9. Eliminar mascota por nombre")
     print("0. Salir")
     return input("Seleccione una opción: ")
