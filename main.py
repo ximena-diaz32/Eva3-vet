@@ -1,5 +1,6 @@
 import pymongo
 from datetime import datetime
+import random
 
 # Conexión a MongoDB Local
 client = pymongo.MongoClient("mongodb://localhost:27017/")
@@ -12,7 +13,7 @@ def mostrar_mascota(m):
     print(f"Especie: {m['especie']} | Edad: {m['edad']} años")
     print(f"Dueño: {m['propietario']['nombre']} | Tel: {m['propietario']['telefono']}")
     print(f"Última visita registrada: {m['ultima_visita'].strftime('%d/%m/%Y')}")
-    if m['historial_medico']:
+    if m.get('historial_medico'):
         print("Historial Médico:")
         for h in m['historial_medico']:
             print(f"  - {h['fecha'].strftime('%Y-%m-%d')}: {h['diagnostico']} (${h['costo']})")
@@ -29,7 +30,7 @@ def menu():
     print("5. Buscar por rango de fechas de visita")
     print("6. Buscar por nombre de dueño")
     print("7. Actualizar edad de una mascota")
-    print("8. Actualizar Diagnóstico de Atención (Agregar al historial)")
+    print("8. Registrar nueva atención (Agregar al historial)")
     print("9. Eliminar mascota por nombre")
     print("0. Salir")
     return input("Seleccione una opción: ")
@@ -38,6 +39,11 @@ def menu():
 
 def crear():
     try:
+        # Generar ID de 4 dígitos único
+        nuevo_id = random.randint(1000, 9999)
+        while coleccion.find_one({"_id": nuevo_id}):
+            nuevo_id = random.randint(1000, 9999)
+
         nombre = input("Nombre: ")
         especie = input("Especie: ")
         edad = int(input("Edad: "))
@@ -45,6 +51,7 @@ def crear():
         p_tel = input("Teléfono: ")
         
         nuevo = {
+            "_id": nuevo_id,
             "nombre": nombre,
             "especie": especie,
             "edad": edad,
@@ -53,7 +60,7 @@ def crear():
             "ultima_visita": datetime.now()
         }
         coleccion.insert_one(nuevo)
-        print(">>> Registro creado exitosamente.")
+        print(f">>> Registro creado con ID {nuevo_id} exitosamente.")
     except Exception as e:
         print(f"Error al crear: {e}")
 
@@ -70,7 +77,9 @@ def buscar_comparacion():
 
 def buscar_regex():
     texto = input("Ingrese el nombre (o parte de él) a buscar: ")
-    query = {"nombre": {"$regex": texto, "$options": "i"}}
+    # Buscamos usando regex con la opción 'i' (case-insensitive)
+    query = {"nombre": {"$regex": f"^{texto}$", "$options": "i"}}
+    # Si quieres que sea parcial, quita los símbolos ^ y $ del f-string
     for m in coleccion.find(query):
         mostrar_mascota(m)
 
@@ -94,8 +103,15 @@ def buscar_en_subdoc():
 def actualizar_campo_raiz():
     nom = input("Nombre de la mascota: ")
     nueva_edad = int(input("Nueva edad: "))
-    res = coleccion.update_one({"nombre": nom}, {"$set": {"edad": nueva_edad}})
-    print(f"Documentos actualizados: {res.modified_count}")
+    # Usamos regex para encontrar el nombre sin importar mayúsculas
+    res = coleccion.update_one(
+        {"nombre": {"$regex": f"^{nom}$", "$options": "i"}}, 
+        {"$set": {"edad": nueva_edad}}
+    )
+    if res.modified_count > 0:
+        print(">>> Edad actualizada correctamente.")
+    else:
+        print("No se encontró la mascota.")
 
 def actualizar_array():
     nom = input("Nombre de la mascota: ")
@@ -108,8 +124,9 @@ def actualizar_array():
         "costo": precio
     }
     
+    # Usamos regex para encontrar el nombre sin importar mayúsculas
     res = coleccion.update_one(
-        {"nombre": nom},
+        {"nombre": {"$regex": f"^{nom}$", "$options": "i"}},
         {"$push": {"historial_medico": nuevo_evento}, "$set": {"ultima_visita": datetime.now()}}
     )
     if res.modified_count > 0:
@@ -119,9 +136,10 @@ def actualizar_array():
 
 def eliminar():
     nom = input("Nombre de la mascota a eliminar: ")
-    res = coleccion.delete_one({"nombre": nom})
+    # Usamos regex para eliminar sin importar mayúsculas
+    res = coleccion.delete_one({"nombre": {"$regex": f"^{nom}$", "$options": "i"}})
     if res.deleted_count > 0:
-        print(">>> Registro eliminado.")
+        print(">>> Registro eliminado exitosamente.")
     else:
         print("No se encontró el registro.")
 
