@@ -9,6 +9,7 @@ coleccion = db["mascotas"]
 # Limpiar base de datos para asegurar que queden exactamente 10
 coleccion.delete_many({})
 
+# Datos iniciales para los registros de la colección
 datos_iniciales = [
     {
         "nombre": "Thor",
@@ -91,6 +92,6 @@ datos_iniciales = [
         "ultima_visita": datetime(2026, 5, 1)
     }
 ]
-
+# Insertar los datos iniciales en la colección
 coleccion.insert_many(datos_iniciales)
 print(f"Éxito: Se han cargado {coleccion.count_documents({})} documentos en la colección.")
