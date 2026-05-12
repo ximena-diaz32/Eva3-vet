@@ -41,7 +41,6 @@ def menu():
 
 def crear():
     try:
-        # Generar ID de 4 dígitos único
         nuevo_id = random.randint(1000, 9999)
         while coleccion.find_one({"_id": nuevo_id}):
             nuevo_id = random.randint(1000, 9999)
@@ -66,29 +65,32 @@ def crear():
     except Exception as e:
         print(f"Error al crear: {e}")
 
-# Listar todas las mascotas registradas
 def listar():
     cursor = coleccion.find()
     for m in cursor:
         mostrar_mascota(m)
 
-# Buscar mascotas con edad mayor o igual a un valor dado
 def buscar_comparacion():
-    edad_min = int(input("Mostrar mascotas con edad mayor o igual a: "))
-    query = {"edad": {"$gte": edad_min}}
-    for m in coleccion.find(query):
-        mostrar_mascota(m)
+    try:
+        edad_min = int(input("Mostrar mascotas con edad mayor o igual a: "))
+        query = {"edad": {"$gte": edad_min}}
+        for m in coleccion.find(query):
+            mostrar_mascota(m)
+    except ValueError:
+        print("Error: Ingrese un número válido para la edad.")
 
-# Buscar mascotas por nombre usando regex (texto parcial, ignorando mayúsculas o minúsculas)
+# FUNCIÓN 4: Buscar mascotas por nombre (Corregida: Búsqueda parcial)
 def buscar_regex():
     texto = input("Ingrese el nombre (o parte de él) a buscar: ")
-    # Buscamos usando regex con la opción 'i' (case-insensitive)
-    query = {"nombre": {"$regex": f"^{texto}$", "$options": "i"}}
-    # Si quieres que sea parcial, quita los símbolos ^ y $ del f-string
-    for m in coleccion.find(query):
-        mostrar_mascota(m)
+    query = {"nombre": {"$regex": texto, "$options": "i"}}
+    
+    resultados = list(coleccion.find(query))
+    if resultados:
+        for m in resultados:
+            mostrar_mascota(m)
+    else:
+        print(f"No se encontraron mascotas con el nombre: '{texto}'.")
 
-# Buscar mascotas que hayan tenido una visita entre dos fechas dadas
 def buscar_por_fechas():
     try:
         print("Use formato AAAA-MM-DD")
@@ -100,56 +102,58 @@ def buscar_por_fechas():
     except ValueError:
         print("Formato de fecha incorrecto.")
 
-# Buscar mascotas por el nombre del dueño usando regex (ignorando mayúsculas o minúsculas)
+# FUNCIÓN 6: Buscar por nombre del dueño (Corregida: Validación de existencia)
 def buscar_en_subdoc():
     dueño = input("Nombre del dueño a buscar: ")
     query = {"propietario.nombre": {"$regex": dueño, "$options": "i"}}
-    for m in coleccion.find(query):
-        mostrar_mascota(m)
+    
+    # Convertimos a lista para verificar si hay contenido
+    resultados = list(coleccion.find(query))
+    
+    if resultados:
+        for m in resultados:
+            mostrar_mascota(m)
+    else:
+        print(f"No se encontraron resultados para el dueño: '{dueño}'.")
 
-# Actualizar la edad de una mascota por su nombre (ignorando mayúsculas o minúsculas)
 def actualizar_campo_raiz():
     nom = input("Nombre de la mascota: ")
-    nueva_edad = int(input("Nueva edad: "))
-    
-# Usamos regex para encontrar el nombre, ignorando mayúsculas o minúsculas
-    res = coleccion.update_one(
-        {"nombre": {"$regex": f"^{nom}$", "$options": "i"}}, 
-        {"$set": {"edad": nueva_edad}}
-    )
-    if res.modified_count > 0:
-        print(">>> Edad actualizada correctamente.")
-    else:
-        print("No se encontró la mascota.")
+    try:
+        nueva_edad = int(input("Nueva edad: "))
+        res = coleccion.update_one(
+            {"nombre": {"$regex": f"^{nom}$", "$options": "i"}}, 
+            {"$set": {"edad": nueva_edad}}
+        )
+        if res.modified_count > 0:
+            print(">>> Edad actualizada correctamente.")
+        else:
+            print("No se encontró la mascota (asegúrese de usar el nombre exacto).")
+    except ValueError:
+        print("Error: Ingrese un número válido.")
 
-#   Actualizar el historial médico de una mascota agregando un nuevo evento (diagnóstico, fecha y costo)
 def actualizar_array():
     nom = input("Nombre de la mascota: ")
     diag = input("Nuevo diagnóstico: ")
-    precio = int(input("Costo consulta: "))
-    
-    nuevo_evento = {
-        "fecha": datetime.now(),
-        "diagnostico": diag,
-        "costo": precio
-    }
-    
-# Usamos regex para encontrar el nombre, ignorando mayúsculas o minúsculas y actualizamos el historial médico y la última visita
-    res = coleccion.update_one(
-        {"nombre": {"$regex": f"^{nom}$", "$options": "i"}},
-        {"$push": {"historial_medico": nuevo_evento}, "$set": {"ultima_visita": datetime.now()}}
-    )
-    if res.modified_count > 0:
-        print(">>> Historial médico actualizado.")
-    else:
-        print("No se encontró la mascota.")
+    try:
+        precio = int(input("Costo consulta: "))
+        nuevo_evento = {
+            "fecha": datetime.now(),
+            "diagnostico": diag,
+            "costo": precio
+        }
+        res = coleccion.update_one(
+            {"nombre": {"$regex": f"^{nom}$", "$options": "i"}},
+            {"$push": {"historial_medico": nuevo_evento}, "$set": {"ultima_visita": datetime.now()}}
+        )
+        if res.modified_count > 0:
+            print(">>> Historial médico actualizado.")
+        else:
+            print("No se encontró la mascota.")
+    except ValueError:
+        print("Error: Ingrese un costo válido.")
 
-# Eliminar una mascota por su nombre (ignorando mayúsculas o minúsculas)
 def eliminar():
     nom = input("Nombre de la mascota a eliminar: ")
-
-
-    # Usamos regex para eliminar ignorando mayúsculas o minúsculas
     res = coleccion.delete_one({"nombre": {"$regex": f"^{nom}$", "$options": "i"}})
     if res.deleted_count > 0:
         print(">>> Registro eliminado exitosamente.")
