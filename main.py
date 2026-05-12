@@ -7,6 +7,7 @@ client = pymongo.MongoClient("mongodb://localhost:27017/")
 db = client["clinica_veterinaria"]
 coleccion = db["mascotas"]
 
+#--- FUNCIONES AUXILIARES ---
 def mostrar_mascota(m):
     print(f"\n--- Mascota: {m['nombre'].upper()} ---")
     print(f"ID: {m['_id']}")
@@ -21,6 +22,7 @@ def mostrar_mascota(m):
         print("Historial Médico: Sin registros previos.")
     print("-" * 40)
 
+#--- MENÚ PRINCIPAL ---
 def menu():
     print("\n==== GESTIÓN DE CLÍNICA VETERINARIA ====")
     print("1. Registrar nueva mascota")
@@ -35,7 +37,7 @@ def menu():
     print("0. Salir")
     return input("Seleccione una opción: ")
 
-# --- FUNCIONALIDADES ---
+# --- FUNCIONALIDADES CRUD ---
 
 def crear():
     try:
@@ -64,17 +66,20 @@ def crear():
     except Exception as e:
         print(f"Error al crear: {e}")
 
+# Listar todas las mascotas registradas
 def listar():
     cursor = coleccion.find()
     for m in cursor:
         mostrar_mascota(m)
 
+# Buscar mascotas con edad mayor o igual a un valor dado
 def buscar_comparacion():
     edad_min = int(input("Mostrar mascotas con edad mayor o igual a: "))
     query = {"edad": {"$gte": edad_min}}
     for m in coleccion.find(query):
         mostrar_mascota(m)
 
+# Buscar mascotas por nombre usando regex (texto parcial, ignorando mayúsculas o minúsculas)
 def buscar_regex():
     texto = input("Ingrese el nombre (o parte de él) a buscar: ")
     # Buscamos usando regex con la opción 'i' (case-insensitive)
@@ -83,6 +88,7 @@ def buscar_regex():
     for m in coleccion.find(query):
         mostrar_mascota(m)
 
+# Buscar mascotas que hayan tenido una visita entre dos fechas dadas
 def buscar_por_fechas():
     try:
         print("Use formato AAAA-MM-DD")
@@ -94,16 +100,19 @@ def buscar_por_fechas():
     except ValueError:
         print("Formato de fecha incorrecto.")
 
+# Buscar mascotas por el nombre del dueño usando regex (ignorando mayúsculas o minúsculas)
 def buscar_en_subdoc():
     dueño = input("Nombre del dueño a buscar: ")
     query = {"propietario.nombre": {"$regex": dueño, "$options": "i"}}
     for m in coleccion.find(query):
         mostrar_mascota(m)
 
+# Actualizar la edad de una mascota por su nombre (ignorando mayúsculas o minúsculas)
 def actualizar_campo_raiz():
     nom = input("Nombre de la mascota: ")
     nueva_edad = int(input("Nueva edad: "))
-    # Usamos regex para encontrar el nombre sin importar mayúsculas
+    
+# Usamos regex para encontrar el nombre, ignorando mayúsculas o minúsculas
     res = coleccion.update_one(
         {"nombre": {"$regex": f"^{nom}$", "$options": "i"}}, 
         {"$set": {"edad": nueva_edad}}
@@ -113,6 +122,7 @@ def actualizar_campo_raiz():
     else:
         print("No se encontró la mascota.")
 
+#   Actualizar el historial médico de una mascota agregando un nuevo evento (diagnóstico, fecha y costo)
 def actualizar_array():
     nom = input("Nombre de la mascota: ")
     diag = input("Nuevo diagnóstico: ")
@@ -124,7 +134,7 @@ def actualizar_array():
         "costo": precio
     }
     
-    # Usamos regex para encontrar el nombre sin importar mayúsculas
+# Usamos regex para encontrar el nombre, ignorando mayúsculas o minúsculas y actualizamos el historial médico y la última visita
     res = coleccion.update_one(
         {"nombre": {"$regex": f"^{nom}$", "$options": "i"}},
         {"$push": {"historial_medico": nuevo_evento}, "$set": {"ultima_visita": datetime.now()}}
@@ -134,9 +144,12 @@ def actualizar_array():
     else:
         print("No se encontró la mascota.")
 
+# Eliminar una mascota por su nombre (ignorando mayúsculas o minúsculas)
 def eliminar():
     nom = input("Nombre de la mascota a eliminar: ")
-    # Usamos regex para eliminar sin importar mayúsculas
+
+
+    # Usamos regex para eliminar ignorando mayúsculas o minúsculas
     res = coleccion.delete_one({"nombre": {"$regex": f"^{nom}$", "$options": "i"}})
     if res.deleted_count > 0:
         print(">>> Registro eliminado exitosamente.")
